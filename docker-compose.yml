@@ -1,0 +1,48 @@
+version: '2'
+
+networks: 
+  default:
+    driver: bridge
+
+volumes:
+  rethink-data:
+    driver: local
+
+services:
+  rethinkdb:
+    image: rethinkdb:2.3
+    ports:
+      - "8080:8080"
+      - "28015:28015"
+      - "29015:29015"
+    restart: always
+    volumes:
+      - "rethink-data:/data"
+    networks:
+      - "default"
+    command: "rethinkdb --bind all --cache-size 2048"
+  
+  adbd:
+    image: sorccu/adb
+    privileged: true
+    ports:
+      - "5037:5037"
+    restart: always
+    volumes:
+      - "/dev/bus/usb:/dev/bus/usb"
+  
+  stf-local:
+    image: openstf/stf
+    links:
+      - rethinkdb
+      - adbd
+    ports:
+      - "7100:7100"
+      - "7110:7110"
+      - "7120:7120"
+      - "7400-7500:7400-7500"
+    restart: always
+    networks:
+      - "default"
+    command: stf local --public-ip ${IP_ADDRESS} --provider-min-port 7400 --provider-max-port 7500 --adb-host adbd
+  
